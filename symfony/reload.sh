@@ -1,18 +1,23 @@
+#!/usr/bin/env bash
 NPM_EXEC=$1
-
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
 # Check if npm exec is set or set it to pnpm
 if [ -z "$NPM_EXEC" ]
 then
     NPM_EXEC=pnpm
 fi
 
-#!/usr/bin/env bash
+
 function title
 {
     #write title
-    echo "\033[32m -----------------------------------------------"
-    echo " $1"
-    echo " -----------------------------------------------\033[0m"
+    echo -e "$GREEN -----------------------------------------------"
+    echo -e " -"
+    echo -e " - $1"
+    echo -e " -"
+    echo -e " -----------------------------------------------$NC"
 }
 
 # Set -e to fail if any command fails
@@ -40,4 +45,4 @@ php bin/console cache:clear
 
 # Migrate database
 title "Migrate database"
-php bin/console doctrine:migrations:migrate
+php bin/console doctrine:migrations:migrate -n
