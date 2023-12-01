@@ -1,0 +1,185 @@
+version: '3'
+
+silent: true
+
+vars:
+    GREETING: "Welcome to Taskfile, it contains all the commands to help with symfony projects"
+    PWD: $PWD
+    DOCKER: docker
+    DOCKER_RUN: "{{.DOCKER}} run"
+    SYMFONY: symfony
+    SYMFONY_CONSOLE: "{{.SYMFONY}} console"
+    SYMFONY_LINT: "{{.SYMFONY_CONSOLE}} lint:"
+    COMPOSER: symfony composer
+    YARN: yarn
+    PHP: "{{.SYMFONY}} php"
+    COMPOSER_INSTALL: "{{.COMPOSER}} install"
+    COMPOSER_UPDATE: "{{.COMPOSER}} update"
+    PHPQA: "jakzal/phpqa:php8.2"
+    PHPQA_RUN: "{{.DOCKER_RUN}} --init -it --rm -v {{.PWD}}:/project -w /project {{.PHPQA}}"
+    SWAGGER: "php ./vendor/bin/openapi --output docs/swagger.json --format json ./src"
+
+tasks:
+    db-test:
+        desc: "Create / update database tables for tests"
+        cmds:
+            - "{{.SYMFONY_CONSOLE}} doctrine:schema:update --force --complete --env=test"
+    fixtures-test:
+        desc: "Load fixtures for tests"
+        cmds:
+            - "{{.SYMFONY_CONSOLE}} doctrine:fixtures:load --env=test --no-interaction"
+
+    default:
+        cmds:
+            - task: help
+
+    help:
+        desc: Display this help
+        cmds:
+            - echo "{{.GREETING}}"
+            - task --list
+
+    docs:
+        desc: "Generate documentation"
+        cmds:
+            - "{{.SWAGGER}}"
+
+    dr:
+        desc: "Dump routes"
+        cmds:
+            - "{{.SYMFONY_CONSOLE}} debug:router"
+
+    cr:
+        desc: "Check symfony requirements"
+        cmds:
+            - "{{.SYMFONY}} check:requirements"
+
+    cs-dry:
+        desc: "Run php-cs-fixer dry run. Run 'task cs-fix' to fix errors"
+        cmds:
+            - "{{.PHPQA_RUN}} php-cs-fixer fix --verbose --dry-run --diff"
+
+    cs-fix:
+        desc: "Run php-cs-fixer"
+        cmds:
+            - "{{.PHPQA_RUN}} php-cs-fixer fix --verbose"
+
+    phpstan:
+        desc: "Run phpstan"
+        cmds:
+            - "{{.PHPQA_RUN}} phpstan analyse"
+
+    sc:
+        desc: "Run security-checker"
+        cmds:
+            - "{{.SYMFONY}} security:check"
+
+    phpcpd:
+        desc: "Run phpcpd (copy/paste detector)"
+        cmds:
+            - "{{.PHPQA_RUN}} phpcpd ./src"
+
+    rector-dry:
+        desc: "Run rector with dr-run flag. Run 'task rector-fix' to fix errors"
+        cmds:
+            - "{{.PHPQA_RUN}} rector process src --dry-run"
+
+    rector-fix:
+        desc: "Run rector and fix errors"
+        cmds:
+            - "{{.PHPQA_RUN}} rector process src"
+
+    twigcs:
+        desc: "Run twigcs"
+        cmds:
+            - "{{.PHPQA_RUN}} twigcs templates"
+
+    php-metrics:
+        desc: "Run php-metrics"
+        cmds:
+            - "{{.PHPQA_RUN}} phpmetrics --report-html=var/phpmetrics ./src"
+
+    lint-twig:
+        desc: "Run lint:twig"
+        cmds:
+            - "{{.SYMFONY_LINT}}twig ./templates"
+
+    lint-yaml:
+        desc: "Run lint:yaml"
+        cmds:
+            - "{{.SYMFONY_LINT}}yaml ./config"
+
+    lint-container:
+        desc: "Run lint:container"
+        cmds:
+            - "{{.SYMFONY_LINT}}container"
+
+    lint-schema:
+        desc: "Lint Doctrine schema"
+        cmds:
+            - "{{.SYMFONY_CONSOLE}} doctrine:schema:validate"
+
+    qa:
+        desc: "Run all configured jakzal/phpqa services, and symfony linters to validate project"
+        cmds:
+            - docker pull jakzal/phpqa
+            - task: composer-validate
+            - task: composer-validate-deep
+            - task: cs-dry
+            - task: phpstan
+            - task: phpcpd
+            - task: twigcs
+            - task: rector-dry
+            - task: lint-twig
+            - task: lint-yaml
+            - task: lint-container
+            - task: lint-schema
+
+    install:
+        desc: "Install the project for first time"
+        cmds:
+            - "{{.COMPOSER}} install"
+            - "{{.YARN}} install --force"
+            - "{{.YARN}} run dev"
+            - "{{.SYMFONY_CONSOLE}} doctrine:migration:migrate"
+
+    update:
+        desc: "Updates the project to the latest branch changes"
+        cmds:
+            - "git pull"
+            - "{{.SYMFONY_CONSOLE}} doctrine:migration:migrate"
+            - "{{.COMPOSER}} install"
+            - "{{.YARN}} install --force"
+            - "{{.YARN}} run dev"
+
+    test:
+        desc: "Launch PHPUNIT test"
+        cmds:
+            - task: fixtures-test
+            - "{{.SYMFONY}} php bin/phpunit"
+
+    maildev:
+        desc: Launch Maildev
+        cmds:
+            - maildev --hide-extensions STARTTLS
+
+    workflow:contract:
+        desc: Dump workflow
+        cmds:
+            - php bin/console workflow:dump contract | dot -Tpng -o workflow_contract.png
+
+    drivers:
+        desc: Update drivers for Panther (linux OS)
+        cmds:
+            - vendor/bin/bdi detect drivers -vv
+            - sudo mv drivers/* /usr/local/bin/
+
+    dmm:
+        desc: "Create new migration"
+        cmds:
+            - "{{.SYMFONY_CONSOLE}} make:migration"
+
+    mm:
+        desc: "Migrate database"
+        cmds:
+            - "{{.SYMFONY_CONSOLE}} d:m:m -n"
