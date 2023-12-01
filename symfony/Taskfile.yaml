@@ -174,12 +174,22 @@ tasks:
             - vendor/bin/bdi detect drivers -vv
             - sudo mv drivers/* /usr/local/bin/
 
-    dmm:
+    mm:
         desc: "Create new migration"
         cmds:
             - "{{.SYMFONY_CONSOLE}} make:migration"
 
-    mm:
+    dmm:
         desc: "Migrate database"
         cmds:
             - "{{.SYMFONY_CONSOLE}} d:m:m -n"
+
+    s:
+        desc: "Start symfony server"
+        cmds:
+            - "{{.SYMFONY}} serve"
+
+    w:
+        desc: "Start webpack server"
+        cmds:
+            - "{{.YARN}} run watch"
